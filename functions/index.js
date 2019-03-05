@@ -21,6 +21,12 @@ const config = {
 admin.initializeApp(config);
 
 const app = expres();
+app.all('*', function (req, res, next) {
+	res.header("Access-Control-Allow-Origin", "*");
+	res.header("Access-Control-Allow-Headers", "X-Requested-With");
+	next();
+});
+
 
 const db = admin.firestore();
 var bigQuery = new BigQuery({ projectId: 'aaa-impact' });
@@ -29,9 +35,9 @@ var bigQuery = new BigQuery({ projectId: 'aaa-impact' });
 let firebaseConfig = JSON.parse(process.env.FIREBASE_CONFIG);
 
 function getUserDetails(req) {
-return	{
+	return {
 		user: req.user ? req.user.email : "test@mailinator.com",
-			role: req.user ? req.user.role : "Admin",
+		role: req.user ? req.user.role : "Admin",
 	}
 }
 
@@ -44,11 +50,13 @@ app.use(morgan(function (tokens, req, res) {
 
 app.get('/rules', async (req, res, next) => {
 	let rulesList = []
-	const ruleRef = await db.collection('rules').get()
-	.then(snapshot => {
-		snapshot.docs.map(doc => rulesList.push(doc.data()));
-	})
-	res.send({ success: true, rules: rulesList})
+	return await db.collection('rules').get()
+		.then(snapshot => {
+			snapshot.docs.map(doc => rulesList.push(doc.data()));
+			res.send({ success: true, rules: rulesList });
+			return null;
+		})
+
 })
 
 app.post('/create', async (req, res, next) => {
@@ -59,30 +67,20 @@ app.post('/create', async (req, res, next) => {
 			// const ref =  db.collection('rules').add(data);
 			const ruleRef = db.collection('rules').doc(rule.name);
 			ruleRef.set(data);
-
+			res.json({
+				success: true,
+				rule: ruleRef
+			});
+			return null;
+		}).catch(error => {
+			throw new Error("Table Doesn't exit");
 		})
 	})
 
-	res.json({
-		success: true
-	});
+
 
 
 });
-
-app.put('/:id', async (req, res, next) => {
-	try {
-		const data = req.body;
-		const ref = await db.collection('notes').doc(id).set(data, { merge: true });
-		res.json({
-			id,
-			data
-		});
-	} catch (e) {
-		next(e);
-	}
-});
-
 
 
 
@@ -140,6 +138,7 @@ app.get("/apply_rule", async (req, res, next) => {
 			} else {
 				console.log("No such document!");
 			}
+			return null;
 		}).catch(function (error) {
 			console.log("Error getting document:", error);
 		});
@@ -162,18 +161,49 @@ app.get("/apply_rule", async (req, res, next) => {
 			await Api.executeQuery(engine, ruleName, data)
 				.then(function (events) {
 					console.log(events.map(event => event.params.message), "============", row.TOTAL_COST);
+					return null;
 				})
 				.catch(err => console.log(err.stack))
 		})
+		res.send({ success: true, rules: rule });
+		return null;
 
 	}).catch(function (error) {
 		return error
 	});
 
 
-	res.send({ success: true, rules: rule })
+
 })
 
+
+app.get("/create_rule", async (req, res, next) => {
+	// Api.ruleFormation(req.rule[0]);
+	let ruleForm = {}
+	await Api.ruleFormation(req.body.ruleList[0]).then(result => {
+		ruleForm = result;
+		return null;
+	}).catch(error => {
+		throw error;
+	})
+
+	await Api.buildRule(ruleForm).then(async (result) => {
+		try {
+			data = result;
+			console.log(JSON.stringify(data));
+			const ruleRef = await db.collection('rules').doc('test Details').set(JSON.stringify(data));
+			// ruleRef.
+		} catch (e) {
+			console.log('Error caught');
+		}
+		res.send({ success: true, ruleData: result });
+		return null;
+	}).catch(error => {
+		throw error;
+	})
+	// })
+
+})
 
 
 
