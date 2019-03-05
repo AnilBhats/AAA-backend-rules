@@ -4,7 +4,7 @@
     "rewrites": [
       {
         "source": "/timestamp",
-        "function": "app"
+        "function": "aaa_audit"
       }
     ],
     "ignore": [

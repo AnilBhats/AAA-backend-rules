@@ -208,4 +208,4 @@ app.get("/create_rule", async (req, res, next) => {
 
 
 
-exports.app = functions.https.onRequest(app);
+exports.aaa_audit = functions.https.onRequest(app);
